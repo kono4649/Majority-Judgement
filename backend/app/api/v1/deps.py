@@ -41,8 +41,14 @@ async def get_current_user(
 
 
 async def get_current_superuser(
-    user: User = Depends(get_current_user),
+    user: Optional[User] = Depends(get_current_user_optional),
 ) -> User:
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="認証が必要です",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     if not user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
