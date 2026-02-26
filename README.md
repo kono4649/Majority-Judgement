@@ -14,18 +14,18 @@
 | Backend | FastAPI (Python 3.11+) |
 | Database | PostgreSQL 16 |
 | ORM | SQLAlchemy 2.0 (async) |
-| Auth | JWT (python-jose) ※投票作成者のみ要認証、投票は匿名可 |
+| Auth | JWT (python-jose) ※全APIエンドポイントに認証必須。ユーザー登録はスーパーユーザーのみ可 |
 | CI/CD | GitHub Actions |
 | Proxy / Server | Nginx / Docker & Docker Compose |
 
 ## 📋 機能一覧
 
 - **投票フォーム作成**: ログインユーザーが選択肢・評価スケール・締め切り日時を設定して投票を作成
-- **投票ページ**: 各選択肢に対してグリッド形式で多段階評価（最高〜不適切）を入力
-- **匿名投票対応**: ログイン不要で参加可能。ブラウザトークンで重複投票を防止
-- **結果確認ページ**: 各評価の割合を積み上げ棒グラフで可視化。メダル表示でランキングを提示
+- **投票ページ**: 各選択肢に対してグリッド形式で多段階評価（最高〜不適切）を入力（認証必須）
+- **結果確認ページ**: 各評価の割合を積み上げ棒グラフで可視化。メダル表示でランキングを提示（認証必須）
 - **順位計算アルゴリズム**: MJ特有の中央値比較とタイブレーク処理（`backend/app/services/mj_algorithm.py`）
 - **投票締め切り機能**: 作成者が手動で投票を終了可能
+- **ユーザー管理**: スーパーユーザー（システム管理者）のみがユーザーを登録可能
 
 ## 🧮 順位計算ロジック (Majority Judgment)
 
@@ -98,13 +98,13 @@ erDiagram
 
 | メソッド | パス | 認証 | 説明 |
 |---|---|---|---|
-| POST | `/api/v1/auth/register` | 不要 | ユーザー登録 |
+| POST | `/api/v1/auth/register` | **必要**（スーパーユーザー） | ユーザー登録 |
 | POST | `/api/v1/auth/login` | 不要 | ログイン・JWT取得 |
-| GET | `/api/v1/polls` | 不要 | 投票一覧取得 |
+| GET | `/api/v1/polls` | **必要** | 投票一覧取得 |
 | POST | `/api/v1/polls` | **必要** | 新規投票作成 |
-| GET | `/api/v1/polls/{id}` | 不要 | 投票フォーム取得 |
+| GET | `/api/v1/polls/{id}` | **必要** | 投票フォーム取得 |
 | POST | `/api/v1/polls/{id}/vote` | 不要 | 投票実行（匿名可） |
-| GET | `/api/v1/polls/{id}/results` | 不要 | 集計・順位結果取得 |
+| GET | `/api/v1/polls/{id}/results` | **必要** | 集計・順位結果取得 |
 | PATCH | `/api/v1/polls/{id}/close` | **必要**（作成者） | 投票を締め切る |
 
 ## 🚀 セットアップ (ローカル開発環境)
@@ -120,12 +120,26 @@ erDiagram
 git clone https://github.com/kono4649/Majority-Judgement.git
 cd Majority-Judgement
 
-# 環境変数の設定（必要に応じて編集）
+# 環境変数の設定
 cp .env.example .env
+# .env を編集して INITIAL_SUPERUSER_* を設定してください（初回起動前に必須）
 
 # Docker Composeによる起動
 docker-compose up --build
 ```
+
+### 初期スーパーユーザーの設定
+
+`.env` に以下を設定すると、アプリ初回起動時にスーパーユーザーが自動作成されます。
+
+```env
+INITIAL_SUPERUSER_EMAIL=admin@example.com
+INITIAL_SUPERUSER_USERNAME=admin
+INITIAL_SUPERUSER_PASSWORD=your-secure-password
+```
+
+> スーパーユーザーが既に存在する場合は作成をスキップします。
+> スーパーユーザーは `POST /api/v1/auth/register` でのみ他のユーザーを登録できます。
 
 起動後、以下のURLにアクセスできます：
 
