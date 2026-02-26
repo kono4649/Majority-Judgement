@@ -47,7 +47,7 @@ API エンドポイント (主要なもの)
  * GET /api/v1/polls/{id}/results: 集計・順位結果取得
 🚀 セットアップ (ローカル開発環境)
 # リポジトリのクローン
-git clone https://github.com/username/mj-voting-app.git
+git clone https://github.？？？？
 
 # Docker Composeによる起動
 docker-compose up --build
@@ -57,5 +57,3 @@ docker-compose up --build
 Terraformを使用してGCP上に構築します。
  * terraform/ ディレクトリで terraform apply を実行。
  * GitHub Actionsにより、mainブランチへのPushでCloud Runへ自動デプロイ。
-いかがでしょうか？プロジェクトの「顔」として十分な情報を詰め込んでおきました。
-次は、**このREADMEに記載したデータベース構成を実現するためのSQLAlchemyモデル定義（Pythonコード）**を作成しますか？それとも、計算ロジックのユニットテスト案を考えましょうか？
