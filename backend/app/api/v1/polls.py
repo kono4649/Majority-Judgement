@@ -70,7 +70,10 @@ async def create_poll(
 
 
 @router.get("", response_model=list[PollResponse])
-async def list_polls(db: AsyncSession = Depends(get_db)):
+async def list_polls(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     result = await db.execute(
         select(Poll)
         .options(selectinload(Poll.options), selectinload(Poll.grades))
@@ -80,7 +83,11 @@ async def list_polls(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{poll_id}", response_model=PollResponse)
-async def get_poll(poll_id: str, db: AsyncSession = Depends(get_db)):
+async def get_poll(
+    poll_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     result = await db.execute(
         select(Poll)
         .options(selectinload(Poll.options), selectinload(Poll.grades))
@@ -152,7 +159,11 @@ async def submit_vote(
 
 
 @router.get("/{poll_id}/results", response_model=PollResults)
-async def get_results(poll_id: str, db: AsyncSession = Depends(get_db)):
+async def get_results(
+    poll_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     result = await db.execute(
         select(Poll)
         .options(selectinload(Poll.options), selectinload(Poll.grades))
