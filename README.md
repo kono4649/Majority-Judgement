@@ -120,26 +120,32 @@ erDiagram
 git clone https://github.com/kono4649/Majority-Judgement.git
 cd Majority-Judgement
 
-# 環境変数の設定
-cp .env.example .env
-# .env を編集して INITIAL_SUPERUSER_* を設定してください（初回起動前に必須）
-
-# Docker Composeによる起動
-docker-compose up --build
+# Docker Composeによる起動（初回はイメージをビルド）
+docker compose up --build
 ```
 
-### 初期スーパーユーザーの設定
+ローカル開発環境では、`docker-compose.yml` に初期スーパーユーザーのデフォルト値が設定済みです。
+`.env` の編集なしでそのまま起動できます。
 
-`.env` に以下を設定すると、アプリ初回起動時にスーパーユーザーが自動作成されます。
+### 初期スーパーユーザー
 
-```env
-INITIAL_SUPERUSER_EMAIL=admin@example.com
-INITIAL_SUPERUSER_USERNAME=admin
-INITIAL_SUPERUSER_PASSWORD=your-secure-password
-```
+初回起動時にスーパーユーザーが自動作成されます。
 
+| 項目 | デフォルト値（開発用） |
+|---|---|
+| メールアドレス | `admin@example.com` |
+| ユーザー名 | `admin` |
+| パスワード | `changeme-admin-password` |
+
+> **本番環境では必ず変更してください。** `docker-compose.yml` の `INITIAL_SUPERUSER_*` 環境変数、または `.env.example` を参考に `.env` を作成して上書きできます。
+>
 > スーパーユーザーが既に存在する場合は作成をスキップします。
 > スーパーユーザーは `POST /api/v1/auth/register` でのみ他のユーザーを登録できます。
+
+### DB接続の自動リトライ
+
+バックエンドは起動時に PostgreSQL への接続を最大10回（2秒間隔）リトライします。
+DBコンテナの準備が完了する前にバックエンドが起動した場合でも、自動的に待機して接続します。
 
 起動後、以下のURLにアクセスできます：
 
