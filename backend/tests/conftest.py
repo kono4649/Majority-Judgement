@@ -79,6 +79,9 @@ async def setup_database():
 
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+    # イベントループが閉じる前に接続プールを明示的に解放する
+    # （解放しないと StaticPool がコネクションを保持したままループが閉じ、ハングする）
+    await test_engine.dispose()
 
 
 @pytest_asyncio.fixture(scope="session")
