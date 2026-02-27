@@ -24,6 +24,9 @@ services:
       SECRET_KEY: changeme-dev-secret-key
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 1440
+      INITIAL_SUPERUSER_EMAIL: admin@example.com
+      INITIAL_SUPERUSER_USERNAME: admin
+      INITIAL_SUPERUSER_PASSWORD: changeme-admin-password
     depends_on:
       db:
         condition: service_healthy
