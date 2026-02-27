@@ -9,20 +9,6 @@ on:
 jobs:
   backend-test:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: mj_user
-          POSTGRES_PASSWORD: mj_password
-          POSTGRES_DB: mj_db
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-        ports:
-          - 5432:5432
 
     steps:
       - uses: actions/checkout@v4
@@ -36,12 +22,18 @@ jobs:
         run: |
           cd backend
           pip install -r requirements.txt
+          pip install pytest pytest-asyncio==0.23.8 httpx aiosqlite "pydantic[email]"
 
       - name: Run backend linting
         run: |
           pip install flake8
           cd backend
           flake8 app --max-line-length 120 --ignore=E501,W503 || true
+
+      - name: Run integration tests
+        run: |
+          cd backend
+          python -m pytest tests/ -v
 
   frontend-build:
     runs-on: ubuntu-latest

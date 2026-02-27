@@ -22,7 +22,7 @@
 
 - **投票フォーム作成**: ログインユーザーが選択肢・評価スケール・締め切り日時を設定して投票を作成
 - **投票ページ**: 各選択肢に対してグリッド形式で多段階評価（最高〜不適切）を入力（認証必須）
-- **結果確認ページ**: 各評価の割合を積み上げ棒グラフで可視化。メダル表示でランキングを提示（認証必須）
+- **結果確認ページ**: 各評価の割合を積み上げ棒グラフで可視化。メダル表示でランキングを提示（**作成者本人のみ**閲覧可）
 - **順位計算アルゴリズム**: MJ特有の中央値比較とタイブレーク処理（`backend/app/services/mj_algorithm.py`）
 - **投票締め切り機能**: 作成者が手動で投票を終了可能
 - **ユーザー管理**: スーパーユーザー（システム管理者）のみがユーザーを登録可能
@@ -61,6 +61,8 @@ Majority-Judgement/
 │   │   ├── schemas/         # Pydanticスキーマ
 │   │   ├── services/        # MJアルゴリズム (mj_algorithm.py)
 │   │   └── main.py          # FastAPIアプリエントリポイント
+│   ├── tests/               # 統合テスト (conftest.py, test_voting_workflow.py)
+│   ├── pytest.ini           # pytest設定
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend/
@@ -104,7 +106,7 @@ erDiagram
 | POST | `/api/v1/polls` | **必要** | 新規投票作成 |
 | GET | `/api/v1/polls/{id}` | **必要** | 投票フォーム取得 |
 | POST | `/api/v1/polls/{id}/vote` | 不要 | 投票実行（匿名可） |
-| GET | `/api/v1/polls/{id}/results` | **必要** | 集計・順位結果取得 |
+| GET | `/api/v1/polls/{id}/results` | **必要**（作成者本人） | 集計・順位結果取得 |
 | PATCH | `/api/v1/polls/{id}/close` | **必要**（作成者） | 投票を締め切る |
 
 ## 🚀 セットアップ (ローカル開発環境)
@@ -168,9 +170,31 @@ DBコンテナの準備が完了する前にバックエンドが起動した場
 
 投票作成時にラベルをカスタマイズできます。
 
+## 🧪 テスト
+
+バックエンドには業務フローを全網羅する統合テストが実装されています。
+
+```bash
+cd backend
+pip install pytest pytest-asyncio==0.23.8 httpx aiosqlite "pydantic[email]"
+python -m pytest tests/ -v
+```
+
+### テストカバレッジ（18件）
+
+| STEP | 内容 | テスト数 |
+|------|------|--------|
+| 1 | スーパーユーザーでログイン | 2 |
+| 2 | 一般アカウント作成（スーパーユーザー専用） | 3 |
+| 3 | 一般アカウントでログイン → 投票フォーム作成 | 3 |
+| 4 | 不特定多数が投票（匿名・認証済み・重複拒否） | 5 |
+| 5 | 作成者のみが投票結果を確認（非作成者・未認証は拒否） | 4 |
+
+SQLiteインメモリDBを使用するため、外部DB不要で高速に実行できます。
+
 ## 🔄 CI/CD
 
 GitHub Actions (`/.github/workflows/ci.yml`) により、`main` / `claude/**` ブランチへのプッシュ時に以下が自動実行されます：
 
-- **backend-test**: Python 3.11 環境でバックエンドの lint チェック
+- **backend-test**: Python 3.11 環境でバックエンドの lint チェック + **統合テスト実行**
 - **frontend-build**: Node.js 20 環境でフロントエンドのビルド検証

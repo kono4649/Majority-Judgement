@@ -132,13 +132,13 @@ async def submit_vote(
         existing = await db.execute(
             select(Vote).where(Vote.poll_id == poll_id, Vote.user_id == current_user.id)
         )
-        if existing.scalar_one_or_none():
+        if existing.scalars().first():
             raise HTTPException(status_code=400, detail="既にこの投票に参加しています")
     elif body.voter_token:
         existing = await db.execute(
             select(Vote).where(Vote.poll_id == poll_id, Vote.voter_token == body.voter_token)
         )
-        if existing.scalar_one_or_none():
+        if existing.scalars().first():
             raise HTTPException(status_code=400, detail="既にこの投票に参加しています")
 
     voter_token = body.voter_token or str(uuid.uuid4())
@@ -162,7 +162,7 @@ async def submit_vote(
 async def get_results(
     poll_id: str,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
         select(Poll)
@@ -172,6 +172,8 @@ async def get_results(
     poll = result.scalar_one_or_none()
     if not poll:
         raise HTTPException(status_code=404, detail="投票が見つかりません")
+    if poll.creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="この投票結果を閲覧する権限がありません")
 
     votes_result = await db.execute(
         select(Vote).where(Vote.poll_id == poll_id)
