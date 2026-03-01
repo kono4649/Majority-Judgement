@@ -29,6 +29,12 @@ class PollCreate(BaseModel):
     options: list[OptionInput]
     grades: list[GradeInput] = [GradeInput(**g) for g in DEFAULT_GRADES]
     closes_at: Optional[datetime] = None
+    is_public: bool = True
+
+
+class PollUpdate(BaseModel):
+    closes_at: Optional[datetime] = None
+    is_public: Optional[bool] = None
 
     @field_validator("options")
     @classmethod
@@ -66,6 +72,7 @@ class PollResponse(BaseModel):
     title: str
     description: Optional[str]
     is_open: bool
+    is_public: bool
     created_at: datetime
     closes_at: Optional[datetime]
     creator_id: str

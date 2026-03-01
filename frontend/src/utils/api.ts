@@ -51,5 +51,8 @@ export const submitVote = (
 export const getResults = (pollId: string) =>
   api.get<PollResults>(`/polls/${pollId}/results`).then((r) => r.data)
 
+export const updatePoll = (pollId: string, data: { closes_at?: string | null; is_public?: boolean }) =>
+  api.patch<Poll>(`/polls/${pollId}`, data).then((r) => r.data)
+
 export const closePoll = (pollId: string) =>
   api.patch<Poll>(`/polls/${pollId}/close`).then((r) => r.data)

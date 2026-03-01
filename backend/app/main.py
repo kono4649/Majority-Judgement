@@ -37,6 +37,12 @@ async def lifespan(app: FastAPI):
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Add is_public column to existing polls table if it doesn't exist
+        await conn.execute(
+            text(
+                "ALTER TABLE polls ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE"
+            )
+        )
 
     yield
 

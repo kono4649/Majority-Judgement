@@ -13,6 +13,7 @@ from app.models.poll import Poll, Option, Grade, Vote
 from app.models.user import User
 from app.schemas.poll import (
     PollCreate,
+    PollUpdate,
     PollResponse,
     VoteInput,
     PollResults,
@@ -37,6 +38,7 @@ async def create_poll(
         description=body.description,
         creator_id=current_user.id,
         closes_at=body.closes_at,
+        is_public=body.is_public,
     )
     db.add(poll)
     await db.flush()
@@ -77,6 +79,7 @@ async def list_polls(
     result = await db.execute(
         select(Poll)
         .options(selectinload(Poll.options), selectinload(Poll.grades))
+        .where(Poll.is_public == True)  # noqa: E712
         .order_by(Poll.created_at.desc())
     )
     return result.scalars().all()
@@ -254,6 +257,34 @@ async def get_results(
         total_voters=total_voters,
         results=option_results,
     )
+
+
+@router.patch("/{poll_id}", response_model=PollResponse)
+async def update_poll(
+    poll_id: str,
+    body: PollUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Poll)
+        .options(selectinload(Poll.options), selectinload(Poll.grades))
+        .where(Poll.id == poll_id)
+    )
+    poll = result.scalar_one_or_none()
+    if not poll:
+        raise HTTPException(status_code=404, detail="投票が見つかりません")
+    if poll.creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="権限がありません")
+
+    if body.closes_at is not None or "closes_at" in body.model_fields_set:
+        poll.closes_at = body.closes_at
+    if body.is_public is not None:
+        poll.is_public = body.is_public
+
+    await db.commit()
+    await db.refresh(poll)
+    return poll
 
 
 @router.patch("/{poll_id}/close", response_model=PollResponse)

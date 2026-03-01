@@ -27,6 +27,7 @@ export interface Poll {
   title: string
   description: string | null
   is_open: boolean
+  is_public: boolean
   created_at: string
   closes_at: string | null
   creator_id: string
