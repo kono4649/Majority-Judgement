@@ -2,11 +2,10 @@
 業務フロー統合テスト
 
 以下の業務フローを検証します:
-1. スーパーユーザでログインする
-2. 一般のアカウントを作成する
-3. 一般アカウントでログインし直して、投票フォームを作成する
-4. 不特定多数が投票する
-5. 投票フォームを作成した一般アカウントのみが投票結果を確認する
+1. ユーザーを登録する（誰でも登録可能）
+2. 登録したアカウントでログインし、投票フォームを作成する
+3. 不特定多数が投票する
+4. 投票フォームを作成したアカウントのみが投票結果を確認する
 """
 import uuid
 import pytest
@@ -19,42 +18,16 @@ class TestVotingWorkflow:
     """業務フロー全体の統合テスト（順番に実行）"""
 
     # テスト間で状態を共有するクラス変数
-    superuser_token: str = ""
-    regular_user_token: str = ""
+    user_token: str = ""
     other_user_token: str = ""
     poll_id: str = ""
     poll_options: list = []
     poll_grades: list = []
 
-    # ── STEP 1: スーパーユーザでログインする ──────────────────────────────────
+    # ── STEP 1: ユーザーを登録する ──────────────────────────────────────────
 
-    async def test_step1_superuser_login(self, client: AsyncClient):
-        """STEP 1: スーパーユーザーが正常にログインできること"""
-        response = await client.post(
-            "/api/v1/auth/login",
-            json={"email": "admin@test.com", "password": "AdminPass123!"},
-        )
-        assert response.status_code == 200, (
-            f"スーパーユーザーのログインに失敗: {response.text}"
-        )
-        data = response.json()
-        assert "access_token" in data, "access_token がレスポンスに含まれていない"
-        assert data["user"]["is_superuser"] is True, "ログインユーザーがスーパーユーザーではない"
-        TestVotingWorkflow.superuser_token = data["access_token"]
-
-    async def test_step1_wrong_password_fails(self, client: AsyncClient):
-        """STEP 1 (異常系): 誤ったパスワードでのログインが拒否されること"""
-        response = await client.post(
-            "/api/v1/auth/login",
-            json={"email": "admin@test.com", "password": "wrongpassword"},
-        )
-        assert response.status_code == 401, "誤ったパスワードでログインできてしまった"
-
-    # ── STEP 2: 一般のアカウントを作成する ───────────────────────────────────
-
-    async def test_step2_create_regular_user(self, client: AsyncClient):
-        """STEP 2: スーパーユーザーが一般ユーザーを作成できること"""
-        assert TestVotingWorkflow.superuser_token, "STEP 1 が完了していない"
+    async def test_step1_register_user(self, client: AsyncClient):
+        """STEP 1: 誰でもユーザー登録できること"""
         response = await client.post(
             "/api/v1/auth/register",
             json={
@@ -62,17 +35,16 @@ class TestVotingWorkflow:
                 "username": "testuser",
                 "password": "UserPass123!",
             },
-            headers={"Authorization": f"Bearer {TestVotingWorkflow.superuser_token}"},
         )
         assert response.status_code == 201, (
-            f"一般ユーザーの作成に失敗: {response.text}"
+            f"ユーザー登録に失敗: {response.text}"
         )
         data = response.json()
         assert data["email"] == "user@test.com"
-        assert data["is_superuser"] is False, "作成されたユーザーがスーパーユーザーになっている"
+        assert data["username"] == "testuser"
 
-    async def test_step2_create_another_user(self, client: AsyncClient):
-        """STEP 2: 別の一般ユーザー（投票結果確認テスト用）を作成できること"""
+    async def test_step1_register_another_user(self, client: AsyncClient):
+        """STEP 1: 別のユーザーも登録できること（投票結果確認テスト用）"""
         response = await client.post(
             "/api/v1/auth/register",
             json={
@@ -80,42 +52,48 @@ class TestVotingWorkflow:
                 "username": "otheruser",
                 "password": "OtherPass123!",
             },
-            headers={"Authorization": f"Bearer {TestVotingWorkflow.superuser_token}"},
         )
         assert response.status_code == 201, (
-            f"別ユーザーの作成に失敗: {response.text}"
+            f"別ユーザーの登録に失敗: {response.text}"
         )
 
-    async def test_step2_regular_user_cannot_register(self, client: AsyncClient):
-        """STEP 2 (異常系): 未認証では新規ユーザー作成が拒否されること"""
+    async def test_step1_duplicate_email_rejected(self, client: AsyncClient):
+        """STEP 1 (異常系): 重複メールアドレスでの登録が拒否されること"""
         response = await client.post(
             "/api/v1/auth/register",
             json={
-                "email": "unauthorized@test.com",
-                "username": "unauthorized",
+                "email": "user@test.com",
+                "username": "anotheruser",
                 "password": "Pass123!",
             },
-            # Authorization ヘッダーなし
         )
-        assert response.status_code == 401, "未認証でユーザー作成できてしまった"
+        assert response.status_code == 400, "重複メールアドレスで登録できてしまった"
 
-    # ── STEP 3: 一般アカウントでログインし直して、投票フォームを作成する ───────
+    # ── STEP 2: ログインして投票フォームを作成する ────────────────────────────
 
-    async def test_step3_regular_user_login(self, client: AsyncClient):
-        """STEP 3a: 一般ユーザーがログインできること"""
+    async def test_step2_user_login(self, client: AsyncClient):
+        """STEP 2a: ユーザーがログインできること"""
         response = await client.post(
             "/api/v1/auth/login",
             json={"email": "user@test.com", "password": "UserPass123!"},
         )
         assert response.status_code == 200, (
-            f"一般ユーザーのログインに失敗: {response.text}"
+            f"ユーザーのログインに失敗: {response.text}"
         )
         data = response.json()
-        assert data["user"]["is_superuser"] is False
-        TestVotingWorkflow.regular_user_token = data["access_token"]
+        assert "access_token" in data, "access_token がレスポンスに含まれていない"
+        TestVotingWorkflow.user_token = data["access_token"]
 
-    async def test_step3_other_user_login(self, client: AsyncClient):
-        """STEP 3a: 別の一般ユーザーもログインできること（後のテスト用）"""
+    async def test_step2_wrong_password_fails(self, client: AsyncClient):
+        """STEP 2 (異常系): 誤ったパスワードでのログインが拒否されること"""
+        response = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "user@test.com", "password": "wrongpassword"},
+        )
+        assert response.status_code == 401, "誤ったパスワードでログインできてしまった"
+
+    async def test_step2_other_user_login(self, client: AsyncClient):
+        """STEP 2a: 別のユーザーもログインできること（後のテスト用）"""
         response = await client.post(
             "/api/v1/auth/login",
             json={"email": "other@test.com", "password": "OtherPass123!"},
@@ -123,9 +101,9 @@ class TestVotingWorkflow:
         assert response.status_code == 200
         TestVotingWorkflow.other_user_token = response.json()["access_token"]
 
-    async def test_step3_create_poll(self, client: AsyncClient):
-        """STEP 3b: 一般ユーザーが投票フォームを作成できること"""
-        assert TestVotingWorkflow.regular_user_token, "STEP 3a が完了していない"
+    async def test_step2_create_poll(self, client: AsyncClient):
+        """STEP 2b: ログイン済みユーザーが投票フォームを作成できること"""
+        assert TestVotingWorkflow.user_token, "STEP 2a が完了していない"
         response = await client.post(
             "/api/v1/polls",
             json={
@@ -142,7 +120,7 @@ class TestVotingWorkflow:
                     {"label": "普通", "value": 1},
                 ],
             },
-            headers={"Authorization": f"Bearer {TestVotingWorkflow.regular_user_token}"},
+            headers={"Authorization": f"Bearer {TestVotingWorkflow.user_token}"},
         )
         assert response.status_code == 201, (
             f"投票フォームの作成に失敗: {response.text}"
@@ -157,8 +135,8 @@ class TestVotingWorkflow:
         TestVotingWorkflow.poll_options = data["options"]
         TestVotingWorkflow.poll_grades = data["grades"]
 
-    async def test_step3_unauthenticated_cannot_create_poll(self, client: AsyncClient):
-        """STEP 3 (異常系): 未認証では投票フォーム作成が拒否されること"""
+    async def test_step2_unauthenticated_cannot_create_poll(self, client: AsyncClient):
+        """STEP 2 (異常系): 未認証では投票フォーム作成が拒否されること"""
         response = await client.post(
             "/api/v1/polls",
             json={
@@ -169,14 +147,13 @@ class TestVotingWorkflow:
         )
         assert response.status_code == 401, "未認証で投票フォーム作成できてしまった"
 
-    # ── STEP 4: 不特定多数が投票する ─────────────────────────────────────────
+    # ── STEP 3: 不特定多数が投票する ─────────────────────────────────────────
 
-    async def test_step4_anonymous_vote_1(self, client: AsyncClient):
-        """STEP 4a: 匿名ユーザー1が投票できること"""
-        assert TestVotingWorkflow.poll_id, "STEP 3 が完了していない"
+    async def test_step3_anonymous_vote_1(self, client: AsyncClient):
+        """STEP 3a: 匿名ユーザー1が投票できること"""
+        assert TestVotingWorkflow.poll_id, "STEP 2 が完了していない"
         options = TestVotingWorkflow.poll_options
         grades = TestVotingWorkflow.poll_grades
-        # 各選択肢に評価を付ける (option_id -> grade_id のマッピング)
         votes = {opt["id"]: grades[0]["id"] for opt in options}
         votes[options[0]["id"]] = grades[0]["id"]  # Python -> 最高
         votes[options[1]["id"]] = grades[1]["id"]  # TypeScript -> 良い
@@ -195,8 +172,8 @@ class TestVotingWorkflow:
         )
         assert "voter_token" in response.json()
 
-    async def test_step4_anonymous_vote_2(self, client: AsyncClient):
-        """STEP 4b: 匿名ユーザー2が投票できること"""
+    async def test_step3_anonymous_vote_2(self, client: AsyncClient):
+        """STEP 3b: 匿名ユーザー2が投票できること"""
         options = TestVotingWorkflow.poll_options
         grades = TestVotingWorkflow.poll_grades
         votes = {
@@ -216,8 +193,8 @@ class TestVotingWorkflow:
             f"匿名投票2 に失敗: {response.text}"
         )
 
-    async def test_step4_authenticated_user_can_vote(self, client: AsyncClient):
-        """STEP 4c: 認証済みユーザー（別ユーザー）が投票できること"""
+    async def test_step3_authenticated_user_can_vote(self, client: AsyncClient):
+        """STEP 3c: 認証済みユーザー（別ユーザー）が投票できること"""
         options = TestVotingWorkflow.poll_options
         grades = TestVotingWorkflow.poll_grades
         votes = {
@@ -235,13 +212,12 @@ class TestVotingWorkflow:
             f"認証済みユーザーの投票に失敗: {response.text}"
         )
 
-    async def test_step4_duplicate_vote_rejected(self, client: AsyncClient):
-        """STEP 4 (異常系): 同じユーザーが2回投票できないこと"""
+    async def test_step3_duplicate_vote_rejected(self, client: AsyncClient):
+        """STEP 3 (異常系): 同じユーザーが2回投票できないこと"""
         options = TestVotingWorkflow.poll_options
         grades = TestVotingWorkflow.poll_grades
         votes = {opt["id"]: grades[0]["id"] for opt in options}
 
-        # 同じ認証済みユーザーで再度投票
         response = await client.post(
             f"/api/v1/polls/{TestVotingWorkflow.poll_id}/vote",
             json={"votes": votes},
@@ -250,35 +226,33 @@ class TestVotingWorkflow:
         assert response.status_code == 400, "同じユーザーが2回投票できてしまった"
         assert "既にこの投票に参加しています" in response.json()["detail"]
 
-    async def test_step4_duplicate_anonymous_token_rejected(self, client: AsyncClient):
-        """STEP 4 (異常系): 同じ匿名トークンで2回投票できないこと"""
+    async def test_step3_duplicate_anonymous_token_rejected(self, client: AsyncClient):
+        """STEP 3 (異常系): 同じ匿名トークンで2回投票できないこと"""
         options = TestVotingWorkflow.poll_options
         grades = TestVotingWorkflow.poll_grades
         votes = {opt["id"]: grades[0]["id"] for opt in options}
         token = str(uuid.uuid4())
 
-        # 1回目
         r1 = await client.post(
             f"/api/v1/polls/{TestVotingWorkflow.poll_id}/vote",
             json={"votes": votes, "voter_token": token},
         )
         assert r1.status_code == 201
 
-        # 2回目（同じトークン）
         r2 = await client.post(
             f"/api/v1/polls/{TestVotingWorkflow.poll_id}/vote",
             json={"votes": votes, "voter_token": token},
         )
         assert r2.status_code == 400, "同じ匿名トークンで2回投票できてしまった"
 
-    # ── STEP 5: 投票フォームを作成した一般アカウントのみが投票結果を確認する ──
+    # ── STEP 4: 投票フォームを作成したアカウントのみが投票結果を確認する ───────
 
-    async def test_step5_creator_can_view_results(self, client: AsyncClient):
-        """STEP 5a: 投票フォームの作成者が結果を確認できること"""
-        assert TestVotingWorkflow.regular_user_token, "STEP 3 が完了していない"
+    async def test_step4_creator_can_view_results(self, client: AsyncClient):
+        """STEP 4a: 投票フォームの作成者が結果を確認できること"""
+        assert TestVotingWorkflow.user_token, "STEP 2 が完了していない"
         response = await client.get(
             f"/api/v1/polls/{TestVotingWorkflow.poll_id}/results",
-            headers={"Authorization": f"Bearer {TestVotingWorkflow.regular_user_token}"},
+            headers={"Authorization": f"Bearer {TestVotingWorkflow.user_token}"},
         )
         assert response.status_code == 200, (
             f"投票フォーム作成者が結果を確認できない: {response.text}"
@@ -287,19 +261,15 @@ class TestVotingWorkflow:
         assert data["poll_id"] == TestVotingWorkflow.poll_id
         assert "results" in data
         assert len(data["results"]) == 3, "結果に3つの選択肢がない"
-        # 全選択肢にランクが付いているか確認
         for result in data["results"]:
             assert "rank" in result
             assert "median_grade" in result
             assert result["total_votes"] > 0, f"{result['name']} の投票数が0"
 
-    async def test_step5_non_creator_cannot_view_results(self, client: AsyncClient):
+    async def test_step4_non_creator_cannot_view_results(self, client: AsyncClient):
         """
-        STEP 5b【重要】: 投票フォームを作成していない別のユーザーが結果を
+        STEP 4b【重要】: 投票フォームを作成していない別のユーザーが結果を
         確認できないこと（403 Forbidden が返ること）
-
-        ※ 現在の実装では get_current_user のみチェックしており、
-          作成者かどうかの確認がないため、このテストは失敗します。
         """
         assert TestVotingWorkflow.other_user_token, "other_user_token が未設定"
         response = await client.get(
@@ -311,26 +281,10 @@ class TestVotingWorkflow:
             f"ステータスコード: {response.status_code}, レスポンス: {response.text}"
         )
 
-    async def test_step5_unauthenticated_cannot_view_results(self, client: AsyncClient):
-        """STEP 5c (異常系): 未認証では結果確認が拒否されること"""
+    async def test_step4_unauthenticated_cannot_view_results(self, client: AsyncClient):
+        """STEP 4c (異常系): 未認証では結果確認が拒否されること"""
         response = await client.get(
             f"/api/v1/polls/{TestVotingWorkflow.poll_id}/results",
             # Authorization ヘッダーなし
         )
         assert response.status_code == 401, "未認証で投票結果を閲覧できてしまった"
-
-    async def test_step5_superuser_cannot_view_other_creators_results(self, client: AsyncClient):
-        """
-        STEP 5d【重要】: スーパーユーザーも他者が作成した投票フォームの
-        結果を確認できないこと（403 Forbidden が返ること）
-
-        ※ 作成者のみが閲覧可能というルールはスーパーユーザーにも適用されます。
-        """
-        response = await client.get(
-            f"/api/v1/polls/{TestVotingWorkflow.poll_id}/results",
-            headers={"Authorization": f"Bearer {TestVotingWorkflow.superuser_token}"},
-        )
-        assert response.status_code == 403, (
-            f"【バグ】スーパーユーザーが他者の投票結果を閲覧できてしまいました。"
-            f"ステータスコード: {response.status_code}, レスポンス: {response.text}"
-        )

@@ -16,7 +16,6 @@ class UserResponse(BaseModel):
     id: str
     email: str
     username: str
-    is_superuser: bool
 
     model_config = {"from_attributes": True}
 

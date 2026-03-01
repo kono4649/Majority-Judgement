@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.api.v1.deps import get_current_superuser
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.db.session import get_db
@@ -19,7 +18,6 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def register(
     body: UserCreate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_superuser),
 ):
     existing = await db.execute(select(User).where(User.email == body.email))
     if existing.scalar_one_or_none():
