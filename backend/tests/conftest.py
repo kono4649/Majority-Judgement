@@ -2,7 +2,6 @@
 テスト用設定ファイル
 SQLite インメモリデータベースを使用してテスト環境を構築します。
 """
-import uuid
 import asyncio
 import pytest
 import pytest_asyncio
@@ -16,15 +15,10 @@ from sqlalchemy.pool import StaticPool
 import os
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
-os.environ["INITIAL_SUPERUSER_EMAIL"] = "admin@test.com"
-os.environ["INITIAL_SUPERUSER_USERNAME"] = "admin"
-os.environ["INITIAL_SUPERUSER_PASSWORD"] = "AdminPass123!"
 
 import app.models  # noqa: F401 - ensure all models are registered
 from app.db.session import Base, get_db
 from app.main import app as fastapi_app
-from app.models.user import User
-from app.core.security import get_password_hash
 
 
 # SQLite インメモリデータベースエンジン
@@ -59,21 +53,9 @@ def event_loop():
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_database():
-    """テスト用データベーステーブルを作成し、スーパーユーザーを初期化"""
+    """テスト用データベーステーブルを作成"""
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
-    # スーパーユーザーを作成
-    async with TestSessionLocal() as db:
-        superuser = User(
-            id=str(uuid.uuid4()),
-            email="admin@test.com",
-            username="admin",
-            hashed_password=get_password_hash("AdminPass123!"),
-            is_superuser=True,
-        )
-        db.add(superuser)
-        await db.commit()
 
     yield
 
