@@ -29,6 +29,7 @@ class PollCreate(BaseModel):
     options: list[OptionInput]
     grades: list[GradeInput] = [GradeInput(**g) for g in DEFAULT_GRADES]
     closes_at: Optional[datetime] = None
+    is_public: bool = True
 
     @field_validator("options")
     @classmethod
@@ -43,6 +44,11 @@ class PollCreate(BaseModel):
         if len(v) < 2:
             raise ValueError("最低2つの評価が必要です")
         return v
+
+
+class PollUpdate(BaseModel):
+    closes_at: Optional[datetime] = None
+    is_public: Optional[bool] = None
 
 
 class GradeResponse(BaseModel):
@@ -66,6 +72,7 @@ class PollResponse(BaseModel):
     title: str
     description: Optional[str]
     is_open: bool
+    is_public: bool
     created_at: datetime
     closes_at: Optional[datetime]
     creator_id: str

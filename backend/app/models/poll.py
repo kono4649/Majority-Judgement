@@ -16,6 +16,7 @@ class Poll(Base):
     description: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
     creator_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False)
     is_open: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_public: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     closes_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
