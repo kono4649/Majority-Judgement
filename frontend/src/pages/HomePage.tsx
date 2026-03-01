@@ -28,7 +28,7 @@ export default function HomePage() {
           各選択肢を多段階で評価し、中央値に基づいてランキングを決定する、より公正な投票方式です。
         </p>
         <Link
-          to="/register"
+          to="/create"
           className="mt-6 inline-block bg-indigo-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
         >
           投票を作成する

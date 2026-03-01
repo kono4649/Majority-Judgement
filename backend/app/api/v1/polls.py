@@ -72,7 +72,7 @@ async def create_poll(
 @router.get("", response_model=list[PollResponse])
 async def list_polls(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: Optional[User] = Depends(get_current_user_optional),
 ):
     result = await db.execute(
         select(Poll)
@@ -86,7 +86,7 @@ async def list_polls(
 async def get_poll(
     poll_id: str,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: Optional[User] = Depends(get_current_user_optional),
 ):
     result = await db.execute(
         select(Poll)
