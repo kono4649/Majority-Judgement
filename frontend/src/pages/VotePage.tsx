@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import type { Poll } from '../types'
 import { getPoll, submitVote } from '../utils/api'
+import { useAuth } from '../hooks/useAuth'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { getGradeColor } from '../utils/gradeColors'
 
@@ -19,11 +20,13 @@ function getOrCreateVoterToken(): string {
 export default function VotePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [poll, setPoll] = useState<Poll | null>(null)
   const [loading, setLoading] = useState(true)
   const [votes, setVotes] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [voted, setVoted] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -48,7 +51,7 @@ export default function VotePage() {
     try {
       const voter_token = getOrCreateVoterToken()
       await submitVote(poll.id, votes, voter_token)
-      navigate(`/polls/${poll.id}/results`)
+      setVoted(true)
     } catch (err: any) {
       setError(err.response?.data?.detail ?? '投票に失敗しました')
     } finally {
@@ -57,6 +60,25 @@ export default function VotePage() {
   }
 
   if (loading) return <LoadingSpinner />
+
+  if (voted && poll) {
+    const isCreator = user?.id === poll.creator_id
+    return (
+      <div className="text-center py-20">
+        <p className="text-2xl font-bold text-gray-900 mb-3">投票ありがとうございました</p>
+        <p className="text-gray-500 mb-8">あなたの投票が記録されました。</p>
+        {isCreator && (
+          <Link
+            to={`/polls/${poll.id}/results`}
+            className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            結果を見る
+          </Link>
+        )}
+      </div>
+    )
+  }
+
   if (!poll)
     return (
       <div className="text-center py-20 text-red-600">{error || '投票が見つかりません'}</div>
