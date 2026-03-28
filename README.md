@@ -38,19 +38,31 @@
 ## ファイル構成
 
 ```
-├── app/                        # FastAPI バックエンド
-│   ├── main.py                 # アプリ本体・CORS設定
-│   ├── config.py               # 設定・定数
-│   ├── database.py             # SQLAlchemy設定
-│   ├── models.py               # DBモデル
-│   ├── schemas.py              # Pydanticスキーマ
-│   ├── auth.py                 # JWT・パスワードユーティリティ
-│   ├── email_utils.py          # メール送信
-│   ├── voting.py               # 9種類の投票計算エンジン
-│   └── routers/
-│       ├── auth.py             # 認証API (/api/auth/...)
-│       ├── polls.py            # 投票フォームCRUD・結果・CSV API
-│       └── votes.py            # 匿名投票API
+├── backend/                    # FastAPI バックエンド
+│   ├── app/
+│   │   ├── main.py             # アプリ本体・CORS設定
+│   │   ├── config.py           # 設定・定数
+│   │   ├── database.py         # SQLAlchemy設定
+│   │   ├── models.py           # DBモデル
+│   │   ├── schemas.py          # Pydanticスキーマ
+│   │   ├── auth.py             # JWT・パスワードユーティリティ
+│   │   ├── email_utils.py      # メール送信
+│   │   ├── voting.py           # 9種類の投票計算エンジン
+│   │   └── routers/
+│   │       ├── auth.py         # 認証API (/api/auth/...)
+│   │       ├── polls.py        # 投票フォームCRUD・結果・CSV API
+│   │       └── votes.py        # 匿名投票API
+│   ├── tests/
+│   │   ├── conftest.py         # pytest フィクスチャ（TestClient・DBオーバーライド）
+│   │   ├── test_auth.py        # 認証APIテスト
+│   │   ├── test_polls.py       # 投票フォームCRUD・結果テスト
+│   │   ├── test_votes.py       # 匿名投票APIテスト
+│   │   └── test_voting_algorithms.py  # 9種類のアルゴリズムユニットテスト
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── requirements-dev.txt    # テスト用依存関係
+│   ├── pytest.ini
+│   └── run.py                  # 開発用起動スクリプト
 │
 ├── frontend/                   # React フロントエンド
 │   ├── src/
@@ -76,10 +88,7 @@
 │   ├── nginx.conf              # Nginx設定（SPA・APIプロキシ）
 │   └── Dockerfile
 │
-├── Dockerfile                  # バックエンド用
 ├── docker-compose.yml
-├── requirements.txt
-├── run.py                      # 開発用起動スクリプト
 └── .env.example
 ```
 
@@ -107,8 +116,9 @@ docker compose up --build
 ### バックエンド
 
 ```bash
+cd backend
 pip install -r requirements.txt
-cp .env.example .env
+cp ../.env.example ../.env
 python run.py
 # → http://localhost:8000 で API サーバー起動
 ```
@@ -123,6 +133,36 @@ npm run dev
 ```
 
 > Vite の開発サーバーは `/api` リクエストを `http://localhost:8000` にプロキシします。
+
+## テスト
+
+バックエンドには pytest によるテストスイートがあります（75テスト）。
+
+```bash
+cd backend
+
+# テスト用依存関係をインストール
+pip install -r requirements-dev.txt
+
+# 全テストを実行
+pytest
+
+# 詳細出力
+pytest -v
+
+# 特定ファイルのみ
+pytest tests/test_voting_algorithms.py -v
+```
+
+### テスト構成
+
+| ファイル | 内容 |
+|----------|------|
+| `tests/conftest.py` | TestClient・インメモリSQLite・認証ヘルパー |
+| `tests/test_auth.py` | 登録・アクティベーション・ログイン・ログアウト |
+| `tests/test_polls.py` | 投票フォームCRUD・結果取得・CSVダウンロード |
+| `tests/test_votes.py` | 匿名投票・重複防止・全9方式の投票送信 |
+| `tests/test_voting_algorithms.py` | 9種類の集計アルゴリズムのユニットテスト |
 
 ## 環境変数（`.env`）
 
