@@ -1,0 +1,48 @@
+.negative-vote {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.neg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.neg-option-name {
+  font-weight: 500;
+  flex: 1;
+  min-width: 8rem;
+}
+
+.neg-btns {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.neg-btn {
+  padding: 0.35rem 0.8rem;
+  border: 2px solid;
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  background: transparent;
+}
+
+.neg-pos  { border-color: var(--color-success); color: var(--color-success); }
+.neg-neutral { border-color: var(--color-secondary); color: var(--color-secondary); }
+.neg-neg  { border-color: var(--color-danger);  color: var(--color-danger); }
+
+.neg-pos.active  { background: var(--color-success); color: #fff; }
+.neg-neutral.active { background: var(--color-secondary); color: #fff; }
+.neg-neg.active  { background: var(--color-danger);  color: #fff; }

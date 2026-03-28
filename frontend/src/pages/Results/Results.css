@@ -1,0 +1,164 @@
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.results-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.2rem;
+}
+
+.results-poll-name {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.results-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* サマリーカード */
+.results-stats {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 600px) {
+  .results-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .url-card { grid-column: 1 / -1; }
+}
+
+.stat-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  box-shadow: var(--shadow);
+}
+
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.url-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.url-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.url-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* チャート */
+.chart-wrap {
+  height: 300px;
+  position: relative;
+}
+
+/* テーブル */
+.table-wrap {
+  overflow-x: auto;
+}
+
+.mb-4 { margin-bottom: 1.25rem; }
+
+.winner-row td {
+  background: #f0fdf4;
+  font-weight: 600;
+}
+
+.winner-banner {
+  font-size: 1rem;
+  padding: 1rem 1.25rem;
+}
+
+/* MJ分布 */
+.mj-dist-row {
+  margin-bottom: 1.25rem;
+}
+
+.mj-dist-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.4rem;
+}
+
+.mj-dist-bar {
+  display: flex;
+  height: 28px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 0.4rem;
+}
+
+.mj-dist-seg {
+  transition: width 0.3s;
+}
+
+.mj-dist-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mj-dist-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.mj-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* コンドルセ行列 */
+.pairwise-table th, .pairwise-table td {
+  text-align: center;
+  font-size: 0.82rem;
+}
+
+.pairwise-self  { background: #f1f5f9; color: var(--color-text-muted); }
+.pairwise-win   { background: #dcfce7; color: #166534; font-weight: 600; }
+.pairwise-lose  { background: #fee2e2; color: #991b1b; }
+
+.text-success { color: var(--color-success); }
+.text-danger  { color: var(--color-danger); }
+
+.mb-1 { margin-bottom: 0.25rem; }

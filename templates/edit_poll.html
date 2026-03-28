@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}投票フォーム編集{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <h1 class="h3 mb-4"><i class="bi bi-pencil text-primary me-2"></i>投票フォーム編集</h1>
+
+    {% if error %}
+      <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+
+    {% if poll.votes|length > 0 %}
+    <div class="alert alert-warning">
+      <i class="bi bi-exclamation-triangle me-2"></i>
+      すでに <strong>{{ poll.votes|length }}票</strong> が投じられています。
+      選択肢のテキストのみ変更可能で、追加・削除はできません。
+    </div>
+    {% endif %}
+
+    <form method="post" action="/polls/{{ poll.id }}/edit" id="editForm">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-primary text-white fw-semibold">基本情報</div>
+        <div class="card-body p-4">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">タイトル</label>
+            <input type="text" name="title" class="form-control" value="{{ poll.title }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">説明</label>
+            <textarea name="description" class="form-control" rows="2">{{ poll.description or '' }}</textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">投票方式</label>
+            <input type="text" class="form-control" value="{{ voting_methods[poll.voting_method] }}" readonly disabled>
+            <div class="form-text">投票方式は変更できません。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-primary text-white fw-semibold">選択肢</div>
+        <div class="card-body p-4">
+          <div id="optionList">
+            {% for opt in poll.options %}
+            <div class="option-row d-flex gap-2 mb-2">
+              <input type="text" class="form-control option-input" value="{{ opt.text }}"
+                     {% if poll.votes|length > 0 %}{% endif %}>
+              {% if poll.votes|length == 0 %}
+              <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeOption(this)">
+                <i class="bi bi-x"></i>
+              </button>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% if poll.votes|length == 0 %}
+          <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addOption()">
+            <i class="bi bi-plus me-1"></i>選択肢を追加
+          </button>
+          {% endif %}
+          <input type="hidden" name="options" id="optionsJson">
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-primary text-white fw-semibold">有効期間</div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">開始日時</label>
+              <input type="datetime-local" name="start_time" class="form-control"
+                     value="{{ poll.start_time.strftime('%Y-%m-%dT%H:%M') if poll.start_time else '' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">終了日時</label>
+              <input type="datetime-local" name="end_time" class="form-control"
+                     value="{{ poll.end_time.strftime('%Y-%m-%dT%H:%M') if poll.end_time else '' }}">
+            </div>
+          </div>
+          <div class="form-text">変更は即座に反映されます。</div>
+        </div>
+      </div>
+
+      <input type="hidden" name="method_settings" value="{{ poll.method_settings | tojson }}">
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-lg px-4" onclick="return prepareSubmit()">
+          <i class="bi bi-check-lg me-2"></i>保存する
+        </button>
+        <a href="/dashboard" class="btn btn-outline-secondary btn-lg">キャンセル</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const hasVotes = {{ poll.votes|length }} > 0;
+
+function addOption() {
+  if (hasVotes) return;
+  const list = document.getElementById('optionList');
+  const count = list.querySelectorAll('.option-row').length + 1;
+  const div = document.createElement('div');
+  div.className = 'option-row d-flex gap-2 mb-2';
+  div.innerHTML = `
+    <input type="text" class="form-control option-input" placeholder="選択肢 ${count}">
+    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeOption(this)">
+      <i class="bi bi-x"></i>
+    </button>`;
+  list.appendChild(div);
+}
+
+function removeOption(btn) {
+  const rows = document.querySelectorAll('.option-row');
+  if (rows.length <= 2) { alert('選択肢は2つ以上必要です。'); return; }
+  btn.closest('.option-row').remove();
+}
+
+function prepareSubmit() {
+  const inputs = document.querySelectorAll('.option-input');
+  const options = Array.from(inputs).map(i => i.value.trim()).filter(v => v);
+  if (options.length < 2) { alert('選択肢は2つ以上入力してください。'); return false; }
+  document.getElementById('optionsJson').value = JSON.stringify(options);
+  return true;
+}
+</script>
+{% endblock %}
