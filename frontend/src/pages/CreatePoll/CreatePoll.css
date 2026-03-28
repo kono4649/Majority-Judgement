@@ -1,0 +1,70 @@
+.page-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+}
+
+.poll-form {
+  max-width: 720px;
+}
+
+.mb-4 {
+  margin-bottom: 1.25rem;
+}
+
+.option-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+  align-items: center;
+}
+
+.option-row .form-control {
+  flex: 1;
+}
+
+.datetime-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 480px) {
+  .datetime-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.range-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.range-inputs > div {
+  flex: 1;
+}
+
+.range-sep {
+  padding-bottom: 0.55rem;
+  color: var(--color-text-muted);
+}
+
+.method-settings {
+  background: #f0f7ff;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-top: 0.5rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.required {
+  color: var(--color-danger);
+  margin-left: 0.2rem;
+}

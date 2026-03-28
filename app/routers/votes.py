@@ -1,31 +1,21 @@
 import hashlib
 import hmac
-import json
 import secrets
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app import models
 from app.config import MJ_GRADES, VOTING_METHODS, settings
 from app.database import get_db
+from app.schemas import VoteSubmitRequest
 
 router = APIRouter(prefix="/vote", tags=["vote"])
-templates = Jinja2Templates(directory="templates")
 
 VOTER_COOKIE = "voter_id"
 VOTER_COOKIE_MAX_AGE = 60 * 60 * 24 * 365  # 1年
-
-
-def _get_or_create_voter_id(request: Request, response=None):
-    voter_id = request.cookies.get(VOTER_COOKIE)
-    is_new = voter_id is None
-    if is_new:
-        voter_id = secrets.token_urlsafe(32)
-    return voter_id, is_new
 
 
 def _make_fingerprint(voter_id: str, poll_public_id: str) -> str:
@@ -43,18 +33,45 @@ def _is_poll_active(poll: models.Poll) -> bool:
     return True
 
 
-# ----------------------------- 投票ページ -----------------------------
-
-@router.get("/{public_id}", response_class=HTMLResponse)
-async def vote_page(public_id: str, request: Request, db: Session = Depends(get_db)):
+def _get_poll_or_404(public_id: str, db: Session) -> models.Poll:
     poll = db.query(models.Poll).filter(models.Poll.public_id == public_id).first()
     if not poll:
-        return templates.TemplateResponse(
-            "vote.html",
-            {"request": request, "error": "投票フォームが見つかりません。"},
-            status_code=404,
-        )
+        raise HTTPException(status_code=404, detail="投票フォームが見つかりません。")
+    return poll
 
+
+def _serialize_public_poll(poll: models.Poll) -> dict:
+    return {
+        "public_id": poll.public_id,
+        "title": poll.title,
+        "description": poll.description,
+        "voting_method": poll.voting_method,
+        "voting_method_label": VOTING_METHODS.get(poll.voting_method, poll.voting_method),
+        "method_settings": poll.method_settings or {},
+        "start_time": poll.start_time.strftime("%Y-%m-%dT%H:%M") if poll.start_time else None,
+        "end_time": poll.end_time.strftime("%Y-%m-%dT%H:%M") if poll.end_time else None,
+        "options": [
+            {"id": o.id, "text": o.text, "order_index": o.order_index}
+            for o in poll.options
+        ],
+        "mj_grades": MJ_GRADES,
+        "is_active": _is_poll_active(poll),
+    }
+
+
+# ----------------------------- 投票フォーム取得 (公開) -----------------------------
+
+@router.get("/{public_id}")
+async def get_vote_poll(public_id: str, db: Session = Depends(get_db)):
+    poll = _get_poll_or_404(public_id, db)
+    return _serialize_public_poll(poll)
+
+
+# ----------------------------- 投票済みステータス確認 -----------------------------
+
+@router.get("/{public_id}/status")
+async def get_vote_status(public_id: str, request: Request, db: Session = Depends(get_db)):
+    poll = _get_poll_or_404(public_id, db)
     voter_id = request.cookies.get(VOTER_COOKIE, "")
     already_voted = False
     if voter_id:
@@ -66,22 +83,7 @@ async def vote_page(public_id: str, request: Request, db: Session = Depends(get_
         )
         already_voted = existing is not None
 
-    is_active = _is_poll_active(poll)
-    options = poll.options
-
-    return templates.TemplateResponse(
-        "vote.html",
-        {
-            "request": request,
-            "poll": poll,
-            "options": options,
-            "already_voted": already_voted,
-            "is_active": is_active,
-            "voting_methods": VOTING_METHODS,
-            "mj_grades": MJ_GRADES,
-            "method_settings": poll.method_settings or {},
-        },
-    )
+    return {"already_voted": already_voted, "is_active": _is_poll_active(poll)}
 
 
 # ----------------------------- 投票送信 -----------------------------
@@ -89,107 +91,45 @@ async def vote_page(public_id: str, request: Request, db: Session = Depends(get_
 @router.post("/{public_id}")
 async def submit_vote(
     public_id: str,
+    body: VoteSubmitRequest,
     request: Request,
-    vote_data_json: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    poll = db.query(models.Poll).filter(models.Poll.public_id == public_id).first()
-    if not poll:
-        return templates.TemplateResponse(
-            "vote.html",
-            {"request": request, "error": "投票フォームが見つかりません。"},
-            status_code=404,
-        )
+    poll = _get_poll_or_404(public_id, db)
 
     if not _is_poll_active(poll):
-        return templates.TemplateResponse(
-            "vote.html",
-            {
-                "request": request,
-                "poll": poll,
-                "options": poll.options,
-                "error": "この投票は現在受け付けていません。",
-                "is_active": False,
-                "voting_methods": VOTING_METHODS,
-                "mj_grades": MJ_GRADES,
-                "method_settings": poll.method_settings or {},
-            },
-        )
+        raise HTTPException(status_code=400, detail="この投票は現在受け付けていません。")
 
-    # 投票者IDの取得または生成
-    voter_id, is_new = _get_or_create_voter_id(request)
+    voter_id = request.cookies.get(VOTER_COOKIE)
+    is_new_voter = voter_id is None
+    if is_new_voter:
+        voter_id = secrets.token_urlsafe(32)
+
     fp = _make_fingerprint(voter_id, poll.public_id)
 
-    # 重複チェック
     existing = (
         db.query(models.Vote)
         .filter(models.Vote.poll_id == poll.id, models.Vote.voter_fingerprint == fp)
         .first()
     )
     if existing:
-        resp = templates.TemplateResponse(
-            "vote.html",
-            {
-                "request": request,
-                "poll": poll,
-                "options": poll.options,
-                "already_voted": True,
-                "is_active": True,
-                "voting_methods": VOTING_METHODS,
-                "mj_grades": MJ_GRADES,
-                "method_settings": poll.method_settings or {},
-            },
-        )
-        return resp
+        raise HTTPException(status_code=409, detail="すでにこの投票に参加済みです。")
 
-    # 投票データのパース
-    try:
-        vote_data = json.loads(vote_data_json)
-    except (json.JSONDecodeError, ValueError):
-        return templates.TemplateResponse(
-            "vote.html",
-            {
-                "request": request,
-                "poll": poll,
-                "options": poll.options,
-                "error": "投票データが不正です。",
-                "is_active": True,
-                "voting_methods": VOTING_METHODS,
-                "mj_grades": MJ_GRADES,
-                "method_settings": poll.method_settings or {},
-            },
-        )
-
-    # 投票を保存
     vote = models.Vote(
         poll_id=poll.id,
         voter_fingerprint=fp,
-        vote_data=vote_data,
+        vote_data=body.vote_data,
     )
     db.add(vote)
     db.commit()
 
-    # レスポンス（クッキー設定）
-    resp = RedirectResponse(url=f"/vote/{public_id}/thanks", status_code=302)
-    if is_new:
-        resp.set_cookie(
+    response = JSONResponse({"success": True})
+    if is_new_voter:
+        response.set_cookie(
             key=VOTER_COOKIE,
             value=voter_id,
             httponly=True,
             max_age=VOTER_COOKIE_MAX_AGE,
             samesite="lax",
         )
-    return resp
-
-
-# ----------------------------- サンクスページ -----------------------------
-
-@router.get("/{public_id}/thanks", response_class=HTMLResponse)
-async def thanks_page(public_id: str, request: Request, db: Session = Depends(get_db)):
-    poll = db.query(models.Poll).filter(models.Poll.public_id == public_id).first()
-    if not poll:
-        return RedirectResponse(url="/")
-    return templates.TemplateResponse(
-        "thanks.html",
-        {"request": request, "poll": poll, "voting_methods": VOTING_METHODS},
-    )
+    return response

@@ -15,9 +15,15 @@ class Settings(BaseSettings):
     SMTP_FROM: str = "noreply@votingapp.local"
 
     BASE_URL: str = "http://localhost:8000"
+    FRONTEND_URL: str = "http://localhost:5173"  # 開発時のVite devサーバー / 本番はnginxのURL
+    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000,http://localhost"
     DEV_MODE: bool = True  # TrueならコンソールにアクティベーションURLを表示
 
     model_config = {"env_file": ".env", "extra": "ignore"}
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
 
 settings = Settings()
@@ -35,4 +41,3 @@ VOTING_METHODS = {
 }
 
 MJ_GRADES = ["拒否", "不良", "許容", "良い", "とても良い", "優秀"]
-MJ_GRADE_COLORS = ["#dc3545", "#fd7e14", "#ffc107", "#20c997", "#0dcaf0", "#0d6efd"]
